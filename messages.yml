@@ -1,4 +1,6 @@
-spawn-set: "&aSpawn point set successfully!"
-teleport: "&aTeleported to spawn."
-no-spawn: "&cSpawn point is not set."
-no-permission: "&cYou do not have permission to use this command."
+# Все сообщения плагина. Цвета задаются в HEX-формате (&#RRGGBB).
+
+no_permission: "&#FF5555У вас нет прав для выполнения этой команды."
+setspawn_success: "&#55FF55Точка спавна успешно установлена!"
+spawn_teleport: "&#55FF55Вы телепортированы к точке спавна."
+no_spawn_set: "&#FFAA00Точка спавна ещё не установлена. Используйте &#FF5555/setspawn&#FFAA00."
