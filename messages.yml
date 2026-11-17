@@ -1,0 +1,4 @@
+spawn-set: "&aSpawn point set successfully!"
+teleport: "&aTeleported to spawn."
+no-spawn: "&cSpawn point is not set."
+no-permission: "&cYou do not have permission to use this command."
