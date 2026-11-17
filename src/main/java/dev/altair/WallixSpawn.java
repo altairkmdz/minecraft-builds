@@ -1,94 +1,53 @@
 package dev.altair;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
+import dev.altair.command.SetSpawnCommand;
+import dev.altair.command.SpawnCommand;
+import dev.altair.manager.SpawnManager;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import java.io.File;
 
-public class WallixSpawn extends JavaPlugin {
-    private File messagesFile;
-    private YamlConfiguration messagesConfig;
+import java.io.File;
+import java.util.logging.Level;
+
+public final class WallixSpawn extends JavaPlugin {
+
+    private YamlConfiguration messages;
 
     @Override
     public void onEnable() {
+        // Сохраняем дефолтные файлы, если их ещё нет
         saveDefaultConfig();
-        loadMessages();
-        this.getCommand("setspawn").setExecutor(new SetSpawnCommand());
-        this.getCommand("spawn").setExecutor(new SpawnCommand());
+        saveResource("messages.yml", false);
+        saveResource("commands.yml", false);
+
+        // Загружаем messages.yml
+        File messagesFile = new File(getDataFolder(), "messages.yml");
+        messages = YamlConfiguration.loadConfiguration(messagesFile);
+
+        // Регистрируем команды
+        getCommand("setspawn").setExecutor(new SetSpawnCommand(this));
+        getCommand("spawn").setExecutor(new SpawnCommand(this));
+
+        // Инициализируем менеджер спавна (читаем из config)
+        SpawnManager.load(this);
+        getLogger().log(Level.INFO, "WallixSpawn включён!");
     }
 
-    private void loadMessages() {
-        messagesFile = new File(getDataFolder(), "messages.yml");
-        if (!messagesFile.exists()) {
-            saveResource("messages.yml", false);
-        }
-        messagesConfig = YamlConfiguration.loadConfiguration(messagesFile);
+    @Override
+    public void onDisable() {
+        getLogger().log(Level.INFO, "WallixSpawn выключен!");
     }
 
-    private String getMessage(String key) {
-        return messagesConfig.getString(key, "");
-    }
-
-    private class SetSpawnCommand implements CommandExecutor {
-        @Override
-        public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command.");
-                return true;
-            }
-            Player player = (Player) sender;
-            if (!player.hasPermission("wallixspawn.setspawn")) {
-                player.sendMessage(getMessage("no-permission"));
-                return true;
-            }
-            Location loc = player.getLocation();
-            FileConfiguration cfg = getConfig();
-            cfg.set("spawn.world", loc.getWorld().getName());
-            cfg.set("spawn.x", loc.getX());
-            cfg.set("spawn.y", loc.getY());
-            cfg.set("spawn.z", loc.getZ());
-            cfg.set("spawn.yaw", loc.getYaw());
-            cfg.set("spawn.pitch", loc.getPitch());
-            saveConfig();
-            player.sendMessage(getMessage("spawn-set"));
-            return true;
-        }
-    }
-
-    private class SpawnCommand implements CommandExecutor {
-        @Override
-        public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command.");
-                return true;
-            }
-            Player player = (Player) sender;
-            FileConfiguration cfg = getConfig();
-            if (!cfg.isSet("spawn.world")) {
-                player.sendMessage(getMessage("no-spawn"));
-                return true;
-            }
-            World world = Bukkit.getWorld(cfg.getString("spawn.world"));
-            if (world == null) {
-                player.sendMessage(getMessage("no-spawn"));
-                return true;
-            }
-            double x = cfg.getDouble("spawn.x");
-            double y = cfg.getDouble("spawn.y");
-            double z = cfg.getDouble("spawn.z");
-            float yaw = (float) cfg.getDouble("spawn.yaw");
-            float pitch = (float) cfg.getDouble("spawn.pitch");
-            Location spawnLoc = new Location(world, x, y, z, yaw, pitch);
-            player.teleport(spawnLoc);
-            player.sendMessage(getMessage("teleport"));
-            return true;
-        }
+    /**
+     * Получить сообщение из messages.yml с поддержкой HEX‑цветов.
+     *
+     * @param path путь к сообщению в файле
+     * @return компонент, готовый к отправке игроку
+     */
+    public net.kyori.adventure.text.Component getMessage(String path) {
+        String raw = messages.getString(path, "§c[WallixSpawn] Ошибка конфигурации: " + path);
+        // Десериализуем строку, где поддерживаются HEX‑коды вида &#RRGGBB
+        return LegacyComponentSerializer.legacySection().deserialize(raw);
     }
 }
