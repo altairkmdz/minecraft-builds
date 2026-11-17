@@ -1,8 +1,8 @@
 name: WallixSpawn
-version: 1.0.0
 main: dev.altair.WallixSpawn
+version: 1.0.0
 api-version: 1.19
-description: Плагин для установки и телепортации к спавну.
+description: Плагин для установки и телепортации на спавн.
 author: Altair
 commands:
   setspawn:
@@ -10,7 +10,7 @@ commands:
     usage: /<command>
     permission: wallixspawn.setspawn
   spawn:
-    description: Телепортироваться к спавну
+    description: Телепортироваться на спавн
     usage: /<command>
     permission: wallixspawn.spawn
 permissions:
