@@ -2,6 +2,7 @@ package dev.altair.command;
 
 import dev.altair.WallixSpawn;
 import dev.altair.util.MessageUtil;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -10,9 +11,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-/**
- * Команда /spawn – телепортирует игрока на сохранённый спавн.
- */
 public class SpawnCommand implements CommandExecutor {
 
     private final WallixSpawn plugin;
@@ -23,25 +21,32 @@ public class SpawnCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Проверка, что отправитель – игрок
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.only-player",
-                    "&#FF5555Эту команду может выполнить только игрок!")));
+            sender.sendMessage(LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .build()
+                    .deserialize(MessageUtil.getMessage(plugin, "messages.only_players")));
             return true;
         }
 
-        // Читаем данные спавна из config.yml
+        if (!plugin.getConfig().contains("spawn.world")) {
+            player.sendMessage(LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .build()
+                    .deserialize(MessageUtil.getMessage(plugin, "messages.no_spawn_set")));
+            return true;
+        }
+
         String worldName = plugin.getConfig().getString("spawn.world");
-        if (worldName == null) {
-            player.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.spawn-not-set",
-                    "&#FF5555Точка спавна ещё не установлена!")));
-            return true;
-        }
-
         World world = Bukkit.getWorld(worldName);
         if (world == null) {
-            player.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.spawn-not-set",
-                    "&#FF5555Точка спавна указана в несуществующем мире!")));
+            player.sendMessage(LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .build()
+                    .deserialize(MessageUtil.getMessage(plugin, "messages.world_not_found")));
             return true;
         }
 
@@ -54,8 +59,11 @@ public class SpawnCommand implements CommandExecutor {
         Location spawnLocation = new Location(world, x, y, z, yaw, pitch);
         player.teleport(spawnLocation);
 
-        player.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.spawn-teleport",
-                "&#55FF55Вы телепортированы на спавн!")));
+        player.sendMessage(LegacyComponentSerializer.builder()
+                .character('&')
+                .hexColors()
+                .build()
+                .deserialize(MessageUtil.getMessage(plugin, "messages.teleport_success")));
         return true;
     }
 }
