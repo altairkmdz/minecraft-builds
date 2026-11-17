@@ -1,5 +1,8 @@
 setspawn:
-  description: Set the server spawn point
-  permission: wallixspawn.setspawn
+  description: "Установить точку спавна"
+  usage: "/setspawn"
+  permission: "wallixspawn.setspawn"
 spawn:
-  description: Teleport to the server spawn point
+  description: "Телепортироваться к спавну"
+  usage: "/spawn"
+  permission: "wallixspawn.spawn"
