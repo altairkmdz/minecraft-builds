@@ -1,0 +1,7 @@
+# Описание команд для удобства администраторов.
+setspawn:
+  description: "Установить точку спавна"
+  permission: "wallixspawn.setspawn"
+spawn:
+  description: "Телепортироваться на спавн"
+  permission: "wallixspawn.spawn"
