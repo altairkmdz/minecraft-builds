@@ -1,0 +1,16 @@
+name: WallixSpawn
+version: 1.0
+main: dev.altair.WallixSpawn
+api-version: 1.19
+commands:
+  setspawn:
+    description: Set the server spawn point
+    permission: wallixspawn.setspawn
+    usage: /<command>
+  spawn:
+    description: Teleport to the server spawn point
+    usage: /<command>
+permissions:
+  wallixspawn.setspawn:
+    description: Allows setting the spawn point
+    default: op
