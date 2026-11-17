@@ -1,0 +1,5 @@
+setspawn:
+  description: Set the server spawn point
+  permission: wallixspawn.setspawn
+spawn:
+  description: Teleport to the server spawn point
