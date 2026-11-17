@@ -2,15 +2,13 @@ package dev.altair.command;
 
 import dev.altair.WallixSpawn;
 import dev.altair.util.MessageUtil;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-/**
- * Команда /setspawn – сохраняет текущую позицию игрока как точку спавна.
- */
 public class SetSpawnCommand implements CommandExecutor {
 
     private final WallixSpawn plugin;
@@ -21,21 +19,24 @@ public class SetSpawnCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Проверка, что отправитель – игрок
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.only-player",
-                    "&#FF5555Эту команду может выполнить только игрок!")));
+            sender.sendMessage(LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .build()
+                    .deserialize(MessageUtil.getMessage(plugin, "messages.only_players")));
             return true;
         }
 
-        // Проверка прав
         if (!player.hasPermission("wallixspawn.setspawn")) {
-            player.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.no-permission",
-                    "&#FF5555У вас нет прав для выполнения этой команды!")));
+            player.sendMessage(LegacyComponentSerializer.builder()
+                    .character('&')
+                    .hexColors()
+                    .build()
+                    .deserialize(MessageUtil.getMessage(plugin, "messages.no_permission")));
             return true;
         }
 
-        // Сохраняем координаты в config.yml
         Location loc = player.getLocation();
         plugin.getConfig().set("spawn.world", loc.getWorld().getName());
         plugin.getConfig().set("spawn.x", loc.getX());
@@ -45,9 +46,11 @@ public class SetSpawnCommand implements CommandExecutor {
         plugin.getConfig().set("spawn.pitch", loc.getPitch());
         plugin.saveConfig();
 
-        // Сообщение об успехе
-        player.sendMessage(MessageUtil.color(plugin.getMessages().getString("messages.setspawn-success",
-                "&#55FF55Точка спавна успешно установлена!")));
+        player.sendMessage(LegacyComponentSerializer.builder()
+                .character('&')
+                .hexColors()
+                .build()
+                .deserialize(MessageUtil.getMessage(plugin, "messages.spawn_set")));
         return true;
     }
 }
