@@ -1,20 +1,20 @@
 package dev.altair.command;
 
 import dev.altair.WallixSpawn;
-import dev.altair.manager.SpawnManager;
-import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.Permission;
 
-/**
- * /spawn – телепортация к установленному спавну.
- */
 public class SpawnCommand implements CommandExecutor {
 
     private final WallixSpawn plugin;
+    private static final Permission SPAWN_PERMISSION = new Permission("wallixspawn.spawn");
 
     public SpawnCommand(WallixSpawn plugin) {
         this.plugin = plugin;
@@ -22,23 +22,37 @@ public class SpawnCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("&#FF5555Только игроки могут использовать эту команду."));
+            sender.sendMessage(ChatColor.RED + "Эту команду может выполнить только игрок.");
             return true;
         }
 
-        if (!player.hasPermission("wallixspawn.spawn")) {
+        if (!player.hasPermission(SPAWN_PERMISSION)) {
             player.sendMessage(plugin.getMessage("no_permission"));
             return true;
         }
 
-        Location spawn = SpawnManager.getSpawn();
-        if (spawn == null) {
-            player.sendMessage(plugin.getMessage("no_spawn_set"));
+        if (!plugin.getConfig().isSet("spawn.world")) {
+            player.sendMessage(plugin.getMessage("spawn_not_set"));
             return true;
         }
 
-        player.teleport(spawn);
+        String worldName = plugin.getConfig().getString("spawn.world");
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            player.sendMessage(plugin.getMessage("spawn_not_set"));
+            return true;
+        }
+
+        double x = plugin.getConfig().getDouble("spawn.x");
+        double y = plugin.getConfig().getDouble("spawn.y");
+        double z = plugin.getConfig().getDouble("spawn.z");
+        float yaw = (float) plugin.getConfig().getDouble("spawn.yaw");
+        float pitch = (float) plugin.getConfig().getDouble("spawn.pitch");
+
+        Location spawnLocation = new Location(world, x, y, z, yaw, pitch);
+        player.teleport(spawnLocation);
         player.sendMessage(plugin.getMessage("spawn_teleport"));
         return true;
     }
