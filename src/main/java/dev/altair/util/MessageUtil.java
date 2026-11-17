@@ -1,23 +1,21 @@
 package dev.altair.util;
 
-import org.bukkit.ChatColor;
+import dev.altair.WallixSpawn;
+import org.bukkit.configuration.file.FileConfiguration;
 
-/**
- * Утилита для перевода цветовых кодов в сообщения.
- */
-public final class MessageUtil {
-
-    private MessageUtil() {
-        // Утилитный класс
-    }
+public class MessageUtil {
 
     /**
-     * Преобразует строку с кодами вида &#FF0000 в цветные сообщения.
+     * Получает сообщение из messages.yml и подставляет префикс, если он задан.
      *
-     * @param message строка с кодами
-     * @return цветное сообщение
+     * @param plugin  основной класс плагина
+     * @param path    путь к сообщению в messages.yml
+     * @return готовая строка сообщения
      */
-    public static String color(String message) {
-        return ChatColor.translateAlternateColorCodes('&', message);
+    public static String getMessage(WallixSpawn plugin, String path) {
+        FileConfiguration messages = plugin.getConfig("messages.yml");
+        String raw = messages.getString(path, "&c[WallixSpawn] Ошибка сообщения");
+        // При необходимости можно добавить замену плейсхолдеров здесь
+        return raw;
     }
 }
