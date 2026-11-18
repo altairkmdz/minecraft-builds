@@ -1,134 +1,143 @@
 package dev.altair.WallixEvents.command;
 
 import dev.altair.WallixEvents.WallixSpawn;
-import dev.altair.WallixEvents.event.EventManager;
-import org.bukkit.ChatColor;
-import org.bukkit.command.*;
-import org.bukkit.configuration.file.FileConfiguration;
+import dev.altair.WallixEvents.manager.EventManager;
+import dev.altair.WallixEvents.model.WallixEvent;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class EventCommand implements CommandExecutor, TabCompleter {
+public class EventCommand implements CommandExecutor {
 
     private final WallixSpawn plugin;
-    private final FileConfiguration messages;
 
     public EventCommand(WallixSpawn plugin) {
         this.plugin = plugin;
-        this.messages = plugin.getConfig(); // messages.yml будет загружен в основной конфиг
     }
 
-    private String translate(String path) {
-        String raw = plugin.getConfig().getString("messages." + path, "&c[Missing message: " + path + "]");
-        return ChatColor.translateAlternateColorCodes('&', raw);
+    private void sendMessage(CommandSender sender, String path) {
+        String msg = plugin.getConfig().getString("messages." + path, "&c[WallixSpawn] Ошибка сообщения.");
+        sender.sendMessage(WallixSpawn.color(msg));
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(translate("prefix") + " " + translate("only-player"));
-            return true;
-        }
-
-        if (args.length == 0) {
-            player.sendMessage(translate("usage"));
+    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (args.length < 1) {
+            sendMessage(sender, "usage");
             return true;
         }
 
         EventManager manager = plugin.getEventManager();
+        String sub = args[0].toLowerCase();
 
-        switch (args[0].toLowerCase()) {
-            case "start" -> {
-                if (!player.hasPermission("wallixspawn.event.start")) {
-                    player.sendMessage(translate("no-permission"));
+        switch (sub) {
+            case "start":
+                if (!sender.hasPermission("wallixspawn.event.start")) {
+                    sendMessage(sender, "no-permission");
                     return true;
                 }
                 if (args.length < 2) {
-                    player.sendMessage(translate("usage-start"));
+                    sendMessage(sender, "usage-start");
                     return true;
                 }
-                String name = args[1];
-                manager.startEvent(name, player);
-            }
-            case "stop" -> {
-                if (!player.hasPermission("wallixspawn.event.stop")) {
-                    player.sendMessage(translate("no-permission"));
+                String startName = args[1];
+                WallixEvent startEvent = manager.getEvent(startName);
+                if (startEvent == null) {
+                    sendMessage(sender, "event-not-found");
                     return true;
                 }
-                if (args.length < 2) {
-                    player.sendMessage(translate("usage-stop"));
+                if (startEvent.isRunning()) {
+                    sendMessage(sender, "event-already-running");
                     return true;
                 }
-                String name = args[1];
-                manager.stopEvent(name, player);
-            }
-            case "restart" -> {
-                if (!player.hasPermission("wallixspawn.event.restart")) {
-                    player.sendMessage(translate("no-permission"));
-                    return true;
-                }
-                if (args.length < 2) {
-                    player.sendMessage(translate("usage-restart"));
-                    return true;
-                }
-                String name = args[1];
-                manager.restartEvent(name, player);
-            }
-            case "delay" -> {
-                if (!player.hasPermission("wallixspawn.event.delay")) {
-                    player.sendMessage(translate("no-permission"));
+                startEvent.start();
+                sendMessage(sender, "event-started");
+                break;
+
+            case "stop":
+                if (!sender.hasPermission("wallixspawn.event.stop")) {
+                    sendMessage(sender, "no-permission");
                     return true;
                 }
                 if (args.length < 2) {
-                    player.sendMessage(translate("usage-delay"));
+                    sendMessage(sender, "usage-stop");
                     return true;
                 }
-                String name = args[1];
-                manager.sendDelayInfo(name, player);
-            }
-            case "reload" -> {
-                if (!player.hasPermission("wallixspawn.event.reload")) {
-                    player.sendMessage(translate("no-permission"));
+                String stopName = args[1];
+                WallixEvent stopEvent = manager.getEvent(stopName);
+                if (stopEvent == null) {
+                    sendMessage(sender, "event-not-found");
+                    return true;
+                }
+                if (!stopEvent.isRunning()) {
+                    sendMessage(sender, "event-not-running");
+                    return true;
+                }
+                stopEvent.stop();
+                sendMessage(sender, "event-stopped");
+                break;
+
+            case "restart":
+                if (!sender.hasPermission("wallixspawn.event.restart")) {
+                    sendMessage(sender, "no-permission");
+                    return true;
+                }
+                if (args.length < 2) {
+                    sendMessage(sender, "usage-restart");
+                    return true;
+                }
+                String restartName = args[1];
+                WallixEvent restartEvent = manager.getEvent(restartName);
+                if (restartEvent == null) {
+                    sendMessage(sender, "event-not-found");
+                    return true;
+                }
+                restartEvent.restart();
+                sendMessage(sender, "event-restarted");
+                break;
+
+            case "delay":
+                if (!sender.hasPermission("wallixspawn.event.delay")) {
+                    sendMessage(sender, "no-permission");
+                    return true;
+                }
+                if (args.length < 3) {
+                    sendMessage(sender, "usage-delay");
+                    return true;
+                }
+                String delayName = args[1];
+                WallixEvent delayEvent = manager.getEvent(delayName);
+                if (delayEvent == null) {
+                    sendMessage(sender, "event-not-found");
+                    return true;
+                }
+                try {
+                    long minutes = Long.parseLong(args[2]);
+                    long seconds = args.length >= 4 ? Long.parseLong(args[3]) : 0L;
+                    long total = minutes * 60 + seconds;
+                    delayEvent.setDelaySeconds(total);
+                    sendMessage(sender, "event-delay-set");
+                } catch (NumberFormatException e) {
+                    sendMessage(sender, "invalid-number");
+                }
+                break;
+
+            case "reload":
+                if (!sender.hasPermission("wallixspawn.event.reload")) {
+                    sendMessage(sender, "no-permission");
                     return true;
                 }
                 plugin.reloadConfig();
-                plugin.saveResource("messages.yml", true);
-                plugin.saveResource("events.yml", true);
-                plugin.saveResource("hologram.yml", true);
-                plugin.getHologramManager().removeAll();
-                plugin.getHologramManager().loadHolograms();
-                player.sendMessage(translate("reload-success"));
-            }
-            default -> player.sendMessage(translate("usage"));
-        }
+                manager.reload();
+                sendMessage(sender, "plugin-reloaded");
+                break;
 
+            default:
+                sendMessage(sender, "usage");
+                break;
+        }
         return true;
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> completions = new ArrayList<>();
-
-        if (args.length == 1) {
-            completions.add("start");
-            completions.add("stop");
-            completions.add("restart");
-            completions.add("delay");
-            completions.add("reload");
-            return completions;
-        }
-
-        if (args.length == 2 && (args[0].equalsIgnoreCase("start")
-                || args[0].equalsIgnoreCase("stop")
-                || args[0].equalsIgnoreCase("restart")
-                || args[0].equalsIgnoreCase("delay"))) {
-            // Предлагаем названия событий из events.yml
-            completions.addAll(plugin.getEventManager().getAllEventNames());
-        }
-
-        return completions;
     }
 }
