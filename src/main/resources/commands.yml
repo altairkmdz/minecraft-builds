@@ -1,9 +1,0 @@
-# Этот файл может использоваться другими плагинами/модулями для динамической регистрации.
-# В данном плагине команды регистрируются в plugin.yml, но файл оставлен для совместимости.
-commands:
-  setspawn:
-    description: "Установить точку спавна"
-    permission: "wallixspawn.setspawn"
-  spawn:
-    description: "Телепортироваться на спавн"
-    permission: "wallixspawn.spawn"
