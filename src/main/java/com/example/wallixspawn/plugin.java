@@ -1,3 +1,1 @@
----
-
-**Файл: src/main/java/dev/altair/WallixEvents/command/EventCommand.java**
+### Файл: src/main/java/dev/altair/WallixEvents/EventCommand.java
