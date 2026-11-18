@@ -1,63 +1,46 @@
 package dev.altair.WallixEvents;
 
+import dev.altair.WallixEvents.command.EventCommand;
+import dev.altair.WallixEvents.event.EventManager;
+import dev.altair.WallixEvents.hologram.HologramManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class WallixSpawn extends JavaPlugin {
 
-    private static WallixSpawn instance;
     private EventManager eventManager;
     private HologramManager hologramManager;
-    private FileConfiguration messages;
 
     @Override
     public void onEnable() {
-        instance = this;
-
-        // Сохраняем и загружаем конфиги
-        saveDefaultConfig();
+        // Сохраняем дефолтные файлы, если их ещё нет
+        saveDefaultConfig(); // config.yml
         saveResource("events.yml", false);
         saveResource("messages.yml", false);
         saveResource("hologram.yml", false);
-        reloadConfigs();
 
         // Инициализируем менеджеры
         this.eventManager = new EventManager(this);
         this.hologramManager = new HologramManager(this);
+        this.hologramManager.loadAndSpawn();
 
         // Регистрируем команду
         this.getCommand("event").setExecutor(new EventCommand(this));
         this.getCommand("event").setTabCompleter(new EventCommand(this));
 
-        // При включении плагина создаём голограммы
-        hologramManager.loadHolograms();
-
-        getLogger().info(ChatColor.translateAlternateColorCodes('&',
-                "&aWallixSpawn включён!"));
+        // Выводим в консоль сообщение о загрузке
+        getServer().getConsoleSender().sendMessage(colorize("&a[WallixSpawn] Плагин успешно загружен!"));
     }
 
     @Override
     public void onDisable() {
-        // Удаляем все голограммы
+        // Останавливаем все запущенные ивенты
+        eventManager.stopAll();
+        // Удаляем голограммы
         hologramManager.removeAll();
-        getLogger().info(ChatColor.translateAlternateColorCodes('&',
-                "&cWallixSpawn выключен!"));
-    }
-
-    public void reloadConfigs() {
-        reloadConfig();
-        messages = YamlConfiguration.loadConfiguration(
-                new java.io.File(getDataFolder(), "messages.yml"));
-        eventManager.reloadEvents();
-        hologramManager.reloadHolograms();
-    }
-
-    public static WallixSpawn getInstance() {
-        return instance;
+        getServer().getConsoleSender().sendMessage(colorize("&c[WallixSpawn] Плагин отключён."));
     }
 
     public EventManager getEventManager() {
@@ -68,9 +51,11 @@ public final class WallixSpawn extends JavaPlugin {
         return hologramManager;
     }
 
-    public Component getMessage(String path) {
-        String raw = messages.getString(path, "");
-        // Переводим HEX коды в компонент
-        return LegacyComponentSerializer.legacySection().deserialize(raw);
+    /**
+     * Преобразует строку с цветами (включая HEX) в Component.
+     */
+    public static Component colorize(String message) {
+        // LegacyComponentSerializer поддерживает &#RRGGBB
+        return LegacyComponentSerializer.legacySection().deserialize(message);
     }
 }
