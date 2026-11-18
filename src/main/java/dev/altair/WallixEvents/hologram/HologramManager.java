@@ -1,38 +1,72 @@
 package dev.altair.WallixEvents.hologram;
 
 import dev.altair.WallixEvents.WallixSpawn;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import dev.altair.WallixEvents.util.ColorUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Простейший менеджер голограмм на основе невидимых ArmorStand.
+ */
 public class HologramManager {
 
     private final WallixSpawn plugin;
-    private final List<ArmorStand> holograms = new ArrayList<>();
+    private final FileConfiguration hologramConfig;
+    private final Map<String, ArmorStand> activeHolograms = new HashMap<>();
 
     public HologramManager(WallixSpawn plugin) {
         this.plugin = plugin;
+        this.hologramConfig = plugin.getConfig("hologram.yml");
     }
 
-    public void loadHolograms() {
-        // Читаем hologram.yml
-        if (!plugin.getConfig().isConfigurationSection("holograms")) {
-            plugin.getLogger().warning("В конфиге нет раздела holograms!");
-            return;
-        }
+    /**
+     * Показать голограмму с именем, совпадающим с названием ивента.
+     */
+    public void showHologram(String eventName) {
+        if (!hologramConfig.contains(eventName)) return;
 
-        for (String key : plugin.getConfig().getConfigurationSection("holograms").getKeys(false)) {
-            Map<String, Object> section = plugin.getConfig().getConfigurationSection("holograms." + key).getValues(false);
-            String worldName = (String) section.get("world");
-            double x = ((Number) section.get("x")).doubleValue();
-            double y = ((Number) section.get("y")).doubleValue();
-            double z = ((Number) section.get("z")).doubleValue();
-            String text = (String) section
+        String worldName = hologramConfig.getString(eventName + ".world");
+        double x = hologramConfig.getDouble(eventName + ".x");
+        double y = hologramConfig.getDouble(eventName + ".y");
+        double z = hologramConfig.getDouble(eventName + ".z");
+        String text = hologramConfig.getString(eventName + ".text", "&a[Ивент] " + eventName);
+
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) return;
+
+        Location loc = new Location(world, x, y, z);
+        ArmorStand stand = world.spawn(loc, ArmorStand.class, as -> {
+            as.setInvisible(true);
+            as.setCustomNameVisible(true);
+            as.setGravity(false);
+            as.setMarker(true);
+            as.setCustomName(ColorUtil.translate(text));
+            as.setSmall(true);
+        });
+        activeHolograms.put(eventName, stand);
+    }
+
+    /**
+     * Удалить голограмму.
+     */
+    public void hideHologram(String eventName) {
+        ArmorStand stand = activeHolograms.remove(eventName);
+        if (stand != null && !stand.isDead()) {
+            stand.remove();
+        }
+    }
+
+    public void reload() {
+        plugin.reloadConfigFile("hologram.yml");
+        // При перезагрузке удаляем все текущие голограммы
+        activeHolograms.values().forEach(ArmorStand::remove);
+        activeHolograms.clear();
+    }
+}
