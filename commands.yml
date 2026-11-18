@@ -1,7 +1,0 @@
-# Описание команд плагина
-setspawn:
-  description: "Установить точку спавна"
-  permission: "wallixspawn.setspawn"
-spawn:
-  description: "Телепортироваться на спавн"
-  permission: "wallixspawn.spawn"
