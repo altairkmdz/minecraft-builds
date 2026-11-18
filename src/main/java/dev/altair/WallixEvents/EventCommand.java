@@ -2,123 +2,109 @@ package dev.altair.WallixEvents;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
+import org.bukkit.ChatColor;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Обработчик команды /event
- */
-public class EventCommand implements TabExecutor {
+public class EventCommand implements CommandExecutor, TabCompleter {
 
-    private final WallixSpawn plugin;
-    private final EventManager eventManager;
-    private final LegacyComponentSerializer serializer = LegacyComponentSerializer.legacySection();
+    private final WallixEvents plugin;
+    private final EventManager manager;
 
-    public EventCommand(WallixSpawn plugin, EventManager eventManager) {
+    public EventCommand(WallixEvents plugin, EventManager manager) {
         this.plugin = plugin;
-        this.eventManager = eventManager;
+        this.manager = manager;
     }
 
-    private void send(Player player, String path, Object... replace) {
-        String raw = plugin.getConfig().getString("messages." + path, "&c[WallixSpawn] Ошибка сообщения");
-        raw = raw.replace("%prefix%", plugin.getConfig().getString("messages.prefix", "&6[WallixSpawn]"));
-        raw = raw.replace("%event%", replace.length > 0 ? replace[0].toString() : "");
-        raw = raw.replace("%minutes%", replace.length > 1 ? replace[1].toString() : "");
-        raw = raw.replace("%seconds%", replace.length > 2 ? replace[2].toString() : "");
-        Component component = serializer.deserialize(raw);
-        player.sendMessage(component);
+    private String translate(String path) {
+        String raw = plugin.getMessagesConfig().getString(path, path);
+        return ChatColor.translateAlternateColorCodes('&', raw);
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("Эту команду можно выполнять только в игре.");
-            return true;
-        }
-
-        if (args.length == 0) {
-            send(player, "usage");
+        if (args.length < 1) {
+            sender.sendMessage(translate("messages.usage"));
             return true;
         }
 
         String sub = args[0].toLowerCase();
 
         switch (sub) {
-            case "start" -> {
-                if (!player.hasPermission("wallixspawn.event.start")) {
-                    send(player, "no-permission");
+            case "start":
+                if (!sender.hasPermission("wallixevents.event.start")) {
+                    sender.sendMessage(translate("messages.no-permission"));
                     return true;
                 }
                 if (args.length < 2) {
-                    send(player, "usage-start");
+                    sender.sendMessage(translate("messages.usage-start"));
                     return true;
                 }
-                String startName = args[1];
-                eventManager.startEvent(startName, player);
-            }
-            case "stop" -> {
-                if (!player.hasPermission("wallixspawn.event.stop")) {
-                    send(player, "no-permission");
-                    return true;
-                }
-                if (args.length < 2) {
-                    send(player, "usage-stop");
-                    return true;
-                }
-                String stopName = args[1];
-                eventManager.stopEvent(stopName, player);
-            }
-            case "restart" -> {
-                if (!player.hasPermission("wallixspawn.event.restart")) {
-                    send(player, "no-permission");
+                manager.startEvent(args[1], sender);
+                break;
+
+            case "stop":
+                if (!sender.hasPermission("wallixevents.event.stop")) {
+                    sender.sendMessage(translate("messages.no-permission"));
                     return true;
                 }
                 if (args.length < 2) {
-                    send(player, "usage-restart");
+                    sender.sendMessage(translate("messages.usage-stop"));
                     return true;
                 }
-                String restartName = args[1];
-                eventManager.restartEvent(restartName, player);
-            }
-            case "delay" -> {
-                if (!player.hasPermission("wallixspawn.event.delay")) {
-                    send(player, "no-permission");
+                manager.stopEvent(args[1], sender);
+                break;
+
+            case "restart":
+                if (!sender.hasPermission("wallixevents.event.restart")) {
+                    sender.sendMessage(translate("messages.no-permission"));
                     return true;
                 }
                 if (args.length < 2) {
-                    send(player, "usage-delay");
+                    sender.sendMessage(translate("messages.usage-restart"));
                     return true;
                 }
-                String delayName = args[1];
-                eventManager.sendDelayInfo(delayName, player);
-            }
-            case "reload" -> {
-                if (!player.hasPermission("wallixspawn.event.reload")) {
-                    send(player, "no-permission");
+                manager.restartEvent(args[1], sender);
+                break;
+
+            case "delay":
+                if (!sender.hasPermission("wallixevents.event.delay")) {
+                    sender.sendMessage(translate("messages.no-permission"));
+                    return true;
+                }
+                if (args.length < 2) {
+                    sender.sendMessage(translate("messages.usage-delay"));
+                    return true;
+                }
+                manager.showDelay(args[1], sender);
+                break;
+
+            case "reload":
+                if (!sender.hasPermission("wallixevents.event.reload")) {
+                    sender.sendMessage(translate("messages.no-permission"));
                     return true;
                 }
                 plugin.reloadConfig();
-                plugin.reloadConfig(); // reload main config
-                plugin.saveResource("events.yml", true);
-                plugin.saveResource("messages.yml", true);
-                plugin.saveResource("hologram.yml", true);
-                eventManager.reload();
-                hologramManager.reload();
-                send(player, "reload");
-            }
-            default -> send(player, "usage");
+                plugin.reloadConfig("messages.yml");
+                plugin.reloadConfig("events.yml");
+                plugin.reloadConfig("hologram.yml");
+                manager.loadEvents();
+                sender.sendMessage(translate("messages.reloaded"));
+                break;
+
+            default:
+                sender.sendMessage(translate("messages.unknown-subcommand"));
+                break;
         }
 
         return true;
     }
 
+    // Simple tab completion for subcommands and event names
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
@@ -129,9 +115,11 @@ public class EventCommand implements TabExecutor {
             }
             return result;
         }
+
         if (args.length == 2 && !args[0].equalsIgnoreCase("reload")) {
-            return new ArrayList<>(eventManager.getAllEventNames());
+            return manager.getEventNamesStartingWith(args[1]);
         }
+
         return Collections.emptyList();
     }
 }
