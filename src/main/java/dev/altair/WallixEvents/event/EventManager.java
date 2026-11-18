@@ -1,109 +1,87 @@
 package dev.altair.WallixEvents.event;
 
 import dev.altair.WallixEvents.WallixSpawn;
+import dev.altair.WallixEvents.util.ColorUtil;
+import dev.altair.WallixEvents.hologram.HologramManager;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
+/**
+ * Управление пользовательскими ивентами.
+ */
 public class EventManager {
 
     private final WallixSpawn plugin;
-    private final Map<String, EventData> events = new HashMap<>();
-    private final Set<String> runningEvents = new HashSet<>();
+    private final FileConfiguration eventsConfig;
+    private final Map<String, BukkitTask> runningEvents = new HashMap<>();
 
     public EventManager(WallixSpawn plugin) {
         this.plugin = plugin;
-        loadEvents();
+        this.eventsConfig = plugin.getConfig("events.yml");
     }
 
-    private void loadEvents() {
-        FileConfiguration cfg = plugin.getConfig();
-        if (!cfg.isConfigurationSection("events")) {
-            plugin.getLogger().warning("В конфиге нет раздела events!");
+    public void startEvent(String name, Player executor) {
+        if (!eventsConfig.contains(name)) {
+            executor.sendMessage(ColorUtil.translate("&cИвент &e" + name + " &cне найден в events.yml"));
             return;
         }
-        for (String key : cfg.getConfigurationSection("events").getKeys(false)) {
-            String displayName = cfg.getString("events." + key + ".display-name", key);
-            long delay = cfg.getLong("events." + key + ".delay-seconds", 0L);
-            events.put(key.toLowerCase(), new EventData(key, displayName, delay));
-        }
-    }
-
-    public List<String> getAllEventNames() {
-        return new ArrayList<>(events.keySet());
-    }
-
-    private String translate(String path) {
-        String raw = plugin.getConfig().getString("messages." + path, "&c[Missing message: " + path + "]");
-        return ChatColor.translateAlternateColorCodes('&', raw);
-    }
-
-    public void startEvent(String name, Player initiator) {
-        EventData data = events.get(name.toLowerCase());
-        if (data == null) {
-            initiator.sendMessage(translate("event-not-found"));
+        if (runningEvents.containsKey(name)) {
+            executor.sendMessage(ColorUtil.translate("&cИвент &e" + name + " &cуже запущен"));
             return;
         }
-        if (runningEvents.contains(data.id)) {
-            initiator.sendMessage(translate("event-already-running"));
-            return;
-        }
-        runningEvents.add(data.id);
-        Bukkit.broadcastMessage(translate("event-started")
-                .replace("{event}", data.displayName));
-        // Здесь можно добавить любую логику, связанную с событием
+
+        // Пример простого ивента: каждые 5 секунд отправляем сообщение всем игрокам
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            String msg = eventsConfig.getString(name + ".message", "&aИвент &e" + name + " &aвыполняется!");
+            Bukkit.broadcastMessage(ColorUtil.translate(msg));
+        }, 0L, 100L); // 5 секунд (20 тик = 1 сек)
+
+        runningEvents.put(name, task);
+        executor.sendMessage(ColorUtil.translate("&aИвент &e" + name + " &aзапущен"));
+        // Показать голограмму, если она указана
+        HologramManager hologramManager = plugin.getHologramManager();
+        hologramManager.showHologram(name);
     }
 
-    public void stopEvent(String name, Player initiator) {
-        EventData data = events.get(name.toLowerCase());
-        if (data == null) {
-            initiator.sendMessage(translate("event-not-found"));
+    public void stopEvent(String name, Player executor) {
+        BukkitTask task = runningEvents.remove(name);
+        if (task == null) {
+            executor.sendMessage(ColorUtil.translate("&cИвент &e" + name + " &cне запущен"));
             return;
         }
-        if (!runningEvents.contains(data.id)) {
-            initiator.sendMessage(translate("event-not-running"));
-            return;
-        }
-        runningEvents.remove(data.id);
-        Bukkit.broadcastMessage(translate("event-stopped")
-                .replace("{event}", data.displayName));
-        // Очистка/завершение логики события
+        task.cancel();
+        executor.sendMessage(ColorUtil.translate("&aИвент &e" + name + " &aостановлен"));
+        // Убрать голограмму
+        plugin.getHologramManager().hideHologram(name);
     }
 
-    public void restartEvent(String name, Player initiator) {
-        stopEvent(name, initiator);
-        // небольшая задержка перед стартом, чтобы игроки успели увидеть сообщение
-        Bukkit.getScheduler().runTaskLater(plugin, () -> startEvent(name, initiator), 20L);
+    public void restartEvent(String name, Player executor) {
+        stopEvent(name, executor);
+        // небольшая задержка 2 секунды перед рестартом
+        Bukkit.getScheduler().runTaskLater(plugin, () -> startEvent(name, executor), 40L);
     }
 
-    public void sendDelayInfo(String name, Player player) {
-        EventData data = events.get(name.toLowerCase());
-        if (data == null) {
-            player.sendMessage(translate("event-not-found"));
+    public void delayEvent(String name, long seconds, Player executor) {
+        if (!eventsConfig.contains(name)) {
+            executor.sendMessage(ColorUtil.translate("&cИвент &e" + name + " &cне найден"));
             return;
         }
-        long seconds = data.delaySeconds;
+        if (runningEvents.containsKey(name)) {
+            executor.sendMessage(ColorUtil.translate("&cИвент &e" + name + " &cуже запущен"));
+            return;
+        }
         long minutes = seconds / 60;
-        long remainingSeconds = seconds % 60;
-        String msg = translate("event-delay")
-                .replace("{event}", data.displayName)
-                .replace("{minutes}", String.valueOf(minutes))
-                .replace("{seconds}", String.valueOf(remainingSeconds));
-        player.sendMessage(msg);
+        long secs = seconds % 60;
+        executor.sendMessage(ColorUtil.translate("&aИвент &e" + name + " &aзапустится через &e" + minutes + "м " + secs + "с"));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> startEvent(name, executor), seconds * 20L);
     }
 
-    private static class EventData {
-        final String id;
-        final String displayName;
-        final long delaySeconds;
-
-        EventData(String id, String displayName, long delaySeconds) {
-            this.id = id;
-            this.displayName = displayName;
-            this.delaySeconds = delaySeconds;
-        }
+    public void reload() {
+        plugin.reloadConfigFile("events.yml");
     }
 }
