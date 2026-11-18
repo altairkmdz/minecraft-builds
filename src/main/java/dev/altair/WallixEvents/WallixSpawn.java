@@ -1,53 +1,50 @@
 package dev.altair.WallixEvents;
 
 import dev.altair.WallixEvents.command.EventCommand;
-import dev.altair.WallixEvents.event.EventManager;
-import dev.altair.WallixEvents.hologram.HologramManager;
+import dev.altair.WallixEvents.manager.EventManager;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class WallixSpawn extends JavaPlugin {
 
+    private static WallixSpawn instance;
     private EventManager eventManager;
-    private HologramManager hologramManager;
 
     @Override
     public void onEnable() {
-        // Сохраняем дефолтные файлы конфигураций, если их ещё нет
-        saveDefaultConfig();
+        instance = this;
+        saveDefaultConfig();               // config.yml
+        saveResource("events.yml", false); // events.yml
         saveResource("messages.yml", false);
-        saveResource("events.yml", false);
         saveResource("hologram.yml", false);
 
-        // Инициализируем менеджеры
         this.eventManager = new EventManager(this);
-        this.hologramManager = new HologramManager(this);
+        this.eventManager.loadEvents();
 
-        // Регистрируем команду /event
+        // Регистрация команды
         this.getCommand("event").setExecutor(new EventCommand(this));
-        this.getCommand("event").setTabCompleter(new EventCommand(this));
 
-        // Загружаем голограммы
-        hologramManager.loadHolograms();
-
-        getLogger().info(ChatColor.translateAlternateColorCodes('&',
-                "&aПлагин WallixSpawn успешно загружен!"));
+        getLogger().info("WallixSpawn включён!");
     }
 
     @Override
     public void onDisable() {
-        // Удаляем все голограммы при выключении сервера
-        hologramManager.removeAll();
-        getLogger().info(ChatColor.translateAlternateColorCodes('&',
-                "&cПлагин WallixSpawn выключен."));
+        if (eventManager != null) {
+            eventManager.stopAllEvents();
+        }
+        getLogger().info("WallixSpawn выключен!");
+    }
+
+    public static WallixSpawn getInstance() {
+        return instance;
     }
 
     public EventManager getEventManager() {
         return eventManager;
     }
 
-    public HologramManager getHologramManager() {
-        return hologramManager;
+    /** Утилита для перевода цветовых кодов (hex + &). */
+    public static String color(String s) {
+        return org.bukkit.ChatColor.translateAlternateColorCodes('&', s);
     }
 }
