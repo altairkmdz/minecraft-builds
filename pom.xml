@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
-  <artifactId>WallixEvents</artifactId>
+  <artifactId>WallixSpawn</artifactId>
   <version>1.0</version>
   <packaging>jar</packaging>
   <properties>
@@ -24,7 +24,7 @@
     </dependency>
   </dependencies>
   <build>
-    <finalName>WallixEvents</finalName>
+    <finalName>WallixSpawn</finalName>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
